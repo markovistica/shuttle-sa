@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<title>Symphony Shuttle</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-brand">
+    <span class="nav-icon">🚌</span>
+    <span>Symphony Shuttle</span>
+  </div>
+  <div class="nav-right">
+    <img class="avatar" id="userAvatar" src="" alt="" onerror="this.style.display='none'">
+    <span class="user-name" id="userName"></span>
+    <a href="/auth/logout" class="logout-btn">Odjavi se</a>
+  </div>
+</nav>
+
+<!-- TABS -->
+<div class="tabs-bar" id="tabsBar">
+  <button class="tab active" data-tab="tours">Ture</button>
+  <button class="tab" data-tab="map">Mapa</button>
+  <button class="tab" data-tab="messages">Poruke</button>
+  <button class="tab driver-tab hidden" data-tab="driver" id="driverTabBtn">Vozač</button>
+</div>
+
+<!-- MAIN CONTENT -->
+<main class="main" id="main">
+
+  <!-- TOURS TAB -->
+  <section class="tab-content active" id="tab-tours">
+    <div class="section-title">Odaberi turu i sjedište</div>
+    <div class="tours-grid" id="toursGrid"></div>
+  </section>
+
+  <!-- MAP TAB -->
+  <section class="tab-content" id="tab-map">
+    <div class="map-header">
+      <div class="section-title">Live lokacija busa</div>
+      <select class="map-tour-select" id="mapTourSelect">
+        <option value="">-- Odaberi turu --</option>
+      </select>
+    </div>
+    <div class="map-status" id="mapStatus">
+      <span class="status-dot offline"></span> Bus nije aktivan
+    </div>
+    <div id="map"></div>
+  </section>
+
+  <!-- MESSAGES TAB -->
+  <section class="tab-content" id="tab-messages">
+    <div class="section-title">Poruke vozaču</div>
+    <div class="messages-box" id="messagesBox">
+      <div class="msg-empty">Nema poruka</div>
+    </div>
+    <div class="message-input-row" id="messageInputRow">
+      <input type="text" class="msg-input" id="msgInput" placeholder="Poruka vozaču..." maxlength="200">
+      <button class="send-btn" id="sendBtn">➤</button>
+    </div>
+  </section>
+
+  <!-- DRIVER TAB -->
+  <section class="tab-content" id="tab-driver">
+    <div class="driver-split">
+
+      <!-- Left/top: Ture i putnici -->
+      <div class="driver-panel driver-panel-tours">
+        <div class="section-title">Ture</div>
+        <div class="driver-tour-pick">
+          <label>Aktiva tura:</label>
+          <select id="driverTourSelect" class="map-tour-select">
+            <option value="">-- Odaberi turu --</option>
+          </select>
+        </div>
+        <div class="driver-location-card" id="driverLocationCard">
+          <div class="loc-status" id="locStatus">
+            <span class="status-dot offline"></span> Lokacija nije aktivna
+          </div>
+          <button class="loc-btn start" id="startLocBtn">📍 Počni dijeljenje lokacije</button>
+          <button class="loc-btn stop hidden" id="stopLocBtn">⛔ Zaustavi lokaciju</button>
+        </div>
+        <div id="passengerList"></div>
+      </div>
+
+      <!-- Right/bottom: Inbox -->
+      <div class="driver-panel driver-panel-messages">
+        <div class="section-title">Inbox</div>
+        <div class="messages-box" id="driverMessagesBox">
+          <div class="msg-empty">Nema poruka</div>
+        </div>
+        <div class="message-input-row">
+          <input type="text" class="msg-input" id="driverMsgInput" placeholder="Odgovor putnicima..." maxlength="200">
+          <button class="send-btn" id="driverSendBtn">➤</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<!-- SEAT MODAL -->
+<div class="modal-overlay hidden" id="seatModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="modalTourName"></span>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="seatGrid"></div>
+      <div class="stop-selector hidden" id="stopSelector">
+        <label>Odaberi stanicu ukrcaja:</label>
+        <select id="stopSelect"></select>
+        <button class="reserve-btn" id="reserveBtn">Rezerviši sjedište</button>
+      </div>
+      <div class="my-reservation hidden" id="myReservationPanel">
+        <div class="my-res-info" id="myResInfo"></div>
+        <button class="cancel-btn" id="cancelBtn">Otkaži rezervaciju</button>
+      </div>
+      <div class="seat-legend">
+        <span class="legend-item"><span class="dot green"></span> Slobodno</span>
+        <span class="legend-item"><span class="dot blue"></span> Moje</span>
+        <span class="legend-item"><span class="dot red"></span> Zauzeto</span>
+        <span class="legend-item"><span class="dot gray"></span> Vozač</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PUSH NOTIFY PROMPT -->
+<div class="notify-banner hidden" id="notifyBanner">
+  <span>Uključi notifikacije za podsjetnik u 15:00 🔔</span>
+  <button id="enableNotify">Uključi</button>
+  <button id="dismissNotify">✕</button>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

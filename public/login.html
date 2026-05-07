@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Symphony Shuttle — Login</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --accent: #4f8ef7;
+    --accent-dark: #3a6fd8;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --border: #2d3142;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+  }
+  .bus-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin-bottom: 2rem;
+  }
+  .error-msg {
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #f87171;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+  .google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 12px;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: background 0.15s, transform 0.1s;
+    width: 100%;
+  }
+  .google-btn:active { transform: scale(0.98); background: var(--accent-dark); }
+  .google-btn svg { flex-shrink: 0; }
+  .domain-note {
+    margin-top: 1.25rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .domain-note span {
+    background: rgba(79,142,247,0.12);
+    color: var(--accent);
+    padding: 0.1em 0.4em;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <span class="bus-icon">🚌</span>
+  <h1>Symphony Shuttle</h1>
+  <p class="subtitle">Rezervacijski sistem za zaposlenike</p>
+
+  <div class="error-msg" id="errorMsg">
+    Pristup dozvoljen samo za <strong>@symphony.is</strong> email adrese.
+  </div>
+
+  <a href="/auth/google" class="google-btn">
+    <svg width="20" height="20" viewBox="0 0 48 48">
+      <path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
+    </svg>
+    Prijavi se sa Google
+  </a>
+
+  <p class="domain-note">Samo za <span>@symphony.is</span> naloge</p>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('error') === 'domain') {
+    document.getElementById('errorMsg').classList.add('show');
+  }
+</script>
+</body>
+</html>
