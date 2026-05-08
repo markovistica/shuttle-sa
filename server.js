@@ -64,16 +64,20 @@ app.use((req, res, next) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
+console.log('[auth] GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'set' : 'MISSING');
+console.log('[auth] GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback');
+
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback'
 }, (accessToken, refreshToken, profile, done) => {
   const email = profile.emails && profile.emails[0] && profile.emails[0].value;
+  console.log('[auth] Google callback - email:', email);
   if (!email || !email.endsWith('@symphony.is')) {
+    console.log('[auth] Rejected - not @symphony.is');
     return done(null, false, { message: 'Only @symphony.is accounts allowed' });
   }
-  // Driver emails (add driver emails here)
   const driverEmails = (process.env.DRIVER_EMAILS || '').split(',').map(e => e.trim());
   const user = {
     id: profile.id,
@@ -82,11 +86,18 @@ passport.use(new GoogleStrategy({
     photo: profile.photos && profile.photos[0] && profile.photos[0].value,
     isDriver: driverEmails.includes(email)
   };
+  console.log('[auth] Login success:', email);
   return done(null, user);
 }));
 
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user, done) => done(null, user));
+passport.serializeUser((user, done) => {
+  console.log('[auth] Serializing user:', user.email);
+  done(null, user);
+});
+passport.deserializeUser((user, done) => {
+  console.log('[auth] Deserializing user:', user && user.email);
+  done(null, user);
+});
 
 // Web Push
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY &&
@@ -105,7 +116,10 @@ app.get('/auth/google',
 
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login?error=domain' }),
-  (req, res) => res.redirect('/')
+  (req, res) => {
+    console.log('[auth] Callback success, session:', JSON.stringify(req.session));
+    res.redirect('/');
+  }
 );
 
 app.get('/auth/logout', (req, res) => {
@@ -113,6 +127,7 @@ app.get('/auth/logout', (req, res) => {
 });
 
 app.get('/auth/user', (req, res) => {
+  console.log('[auth] /auth/user - isAuthenticated:', req.isAuthenticated(), 'session:', JSON.stringify(req.session));
   if (req.isAuthenticated()) {
     res.json({ user: req.user });
   } else {
