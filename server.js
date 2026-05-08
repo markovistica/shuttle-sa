@@ -29,7 +29,7 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'", 'unpkg.com', 'cdn.jsdelivr.net'],
         styleSrc: ["'self'", "'unsafe-inline'", 'unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com'],
         fontSrc: ["'self'", 'fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'tile.openstreetmap.org', '*.tile.openstreetmap.org'],
+        imgSrc: ["'self'", 'data:', 'tile.openstreetmap.org', '*.tile.openstreetmap.org', '*.googleusercontent.com'],
         connectSrc: ["'self'", 'wss:']
       }
     }
