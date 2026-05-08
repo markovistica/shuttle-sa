@@ -50,11 +50,23 @@ router.post('/reserve', ensureAuthenticated, (req, res) => {
   const tourReservations = db.getReservationsForTour(tourId);
 
   // Check if user already has a reservation on this tour
-  const existing = Object.entries(tourReservations).find(
-    ([, r]) => r.userId === userId
-  );
+  const existing = Object.entries(tourReservations).find(([, r]) => r.userId === userId);
   if (existing) {
     return res.status(400).json({ error: 'Already reserved on this tour', seat: parseInt(existing[0]) });
+  }
+
+  // Check group limit: 1 morning tour + 1 afternoon tour per user
+  const morningTours = ['morning1', 'morning2'];
+  const afternoonTours = ['afternoon1', 'afternoon2'];
+  const group = morningTours.includes(tourId) ? morningTours : afternoonTours;
+  const sibling = group.find(id => id !== tourId);
+  if (sibling) {
+    const siblingReservations = db.getReservationsForTour(sibling);
+    const siblingExisting = Object.entries(siblingReservations).find(([, r]) => r.userId === userId);
+    if (siblingExisting) {
+      const label = morningTours.includes(tourId) ? 'jutarnjoj' : 'popodnevnoj';
+      return res.status(400).json({ error: `Već imaš rezervaciju u drugoj ${label} turi` });
+    }
   }
 
   // Check if seat is taken

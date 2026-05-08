@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const helmet = require('helmet');
 const cron = require('node-cron');
 const webpush = require('web-push');
@@ -41,10 +42,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Session
+const sessionStore = process.env.NODE_ENV === 'production'
+  ? undefined
+  : new FileStore({ path: './data/sessions', retries: 1, logFn: () => {} });
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'change_me',
   resave: false,
   saveUninitialized: false,
+  store: sessionStore,
   cookie: {
     secure: false,
     httpOnly: true,

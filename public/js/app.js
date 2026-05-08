@@ -144,7 +144,7 @@ function renderTourCard(tour) {
   if (!card) return;
   const taken = Object.values(tour.seats).filter(s => s === 'taken' || s === 'mine').length;
   const free = TOTAL_SEATS - taken;
-  card.className = `tour-card${tour.myReservation ? ' has-reservation' : ''}`;
+  card.classList.toggle('has-reservation', !!tour.myReservation);
   card.innerHTML = `
     <div class="tour-card-accent"></div>
     <div class="tour-header">
@@ -296,29 +296,38 @@ async function doReserve() {
   btn.disabled = true;
   btn.textContent = 'Rezervišem...';
 
-  const res = await fetch('/api/reserve', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tourId: activeTour.id, seatNumber: selectedSeat, stop })
-  });
-  const data = await res.json();
-  btn.disabled = false;
-  btn.textContent = 'Rezerviši sjedište';
-
-  if (data.success) {
-    // Update local state
-    const tour = tours.find(t => t.id === activeTour.id);
-    if (tour) {
-      tour.seats[selectedSeat] = 'mine';
-      tour.myReservation = { seatNumber: selectedSeat, stop };
-      activeTour = tour;
-      renderSeatGrid(tour);
-      updateModalPanels(tour);
-      renderTourCard(tour);
+  try {
+    const res = await fetch('/api/reserve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tourId: activeTour.id, seatNumber: selectedSeat, stop })
+    });
+    if (res.redirected || res.status === 401) {
+      showToast('❌ Sesija istekla — prijavite se ponovo', 'error');
+      setTimeout(() => window.location.href = '/login', 1500);
+      return;
     }
-    showToast(`✅ Rezervisano sjedište ${selectedSeat} na ${stop}`);
-  } else {
-    showToast('❌ ' + (data.error || 'Greška'), 'error');
+    const data = await res.json();
+    if (data.success) {
+      const tour = tours.find(t => t.id === activeTour.id);
+      if (tour) {
+        tour.seats[selectedSeat] = 'mine';
+        tour.myReservation = { seatNumber: selectedSeat, stop };
+        activeTour = tour;
+        renderSeatGrid(tour);
+        updateModalPanels(tour);
+        renderTourCard(tour);
+      }
+      showToast(`✅ Rezervisano sjedište ${selectedSeat} na ${stop}`);
+    } else {
+      showToast('❌ ' + (data.error || 'Greška'), 'error');
+    }
+  } catch (e) {
+    showToast('❌ Greška pri rezervaciji', 'error');
+    console.error('Reserve error:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Rezerviši sjedište';
   }
 }
 
@@ -573,18 +582,27 @@ async function registerPushSubscription() {
 // ── Utilities ──────────────────────────────────────────────────────────────
 function showToast(msg, type = 'success') {
   const el = document.createElement('div');
+  const bg = type === 'error' ? 'rgba(239,68,68,0.95)' : 'rgba(30,34,48,0.97)';
+  const border = type === 'error' ? 'rgba(239,68,68,0.5)' : 'rgba(79,142,247,0.3)';
+  const icon = type === 'error' ? '' : '';
   el.style.cssText = `
-    position:fixed;bottom:calc(5rem + env(safe-area-inset-bottom,0px));
-    left:50%;transform:translateX(-50%);
-    background:${type === 'error' ? '#ef4444' : '#22c55e'};
-    color:#fff;padding:0.6rem 1.25rem;border-radius:10px;
+    position:fixed;top:calc(var(--nav-h, 56px) + 0.75rem);bottom:auto;
+    left:50%;transform:translateX(-50%) translateY(0);
+    background:${bg};border:1px solid ${border};
+    color:#fff;padding:0.65rem 1.25rem;border-radius:12px;
     font-size:0.85rem;font-weight:600;z-index:9999;
-    white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.3);
-    animation:slideUp 0.2s ease;
+    white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,0.4);
+    backdrop-filter:blur(8px);
+    animation:toastIn 0.3s cubic-bezier(0.16,1,0.3,1);
+    transition:opacity 0.2s,transform 0.2s;
   `;
   el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-50%) translateY(8px)';
+    setTimeout(() => el.remove(), 200);
+  }, 2800);
 }
 
 function escapeHtml(str) {

@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon --ignore public/ server.js",
+    "stop": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true",
+    "restart": "npm run stop && npm run dev"
   },
   "dependencies": {
     "cookie-session": "^2.1.1",
@@ -17,6 +19,7 @@
     "node-cron": "^3.0.2",
     "passport": "^0.6.0",
     "passport-google-oauth20": "^2.0.0",
+    "session-file-store": "^1.5.0",
     "socket.io": "^4.6.1",
     "web-push": "^3.6.6"
   },
