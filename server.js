@@ -45,7 +45,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'change_me',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  cookie: { secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 
 // Passport
@@ -93,7 +93,7 @@ app.get('/auth/google',
 
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login?error=domain' }),
-  (req, res) => res.redirect('/')
+  (req, res) => req.session.save(() => res.redirect('/'))
 );
 
 app.get('/auth/logout', (req, res) => {
