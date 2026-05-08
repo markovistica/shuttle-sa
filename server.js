@@ -4,7 +4,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const helmet = require('helmet');
 const cron = require('node-cron');
 const webpush = require('web-push');
@@ -40,13 +40,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'change_me',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 }
+// Session (cookie-based — survives server restarts)
+app.use(cookieSession({
+  name: 'session',
+  keys: [process.env.SESSION_SECRET || 'change_me'],
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax'
 }));
+
+// Passport compatibility shims for cookie-session
+app.use((req, res, next) => {
+  if (req.session && !req.session.regenerate) {
+    req.session.regenerate = (cb) => cb();
+  }
+  if (req.session && !req.session.save) {
+    req.session.save = (cb) => cb();
+  }
+  next();
+});
 
 // Passport
 app.use(passport.initialize());
@@ -93,7 +105,7 @@ app.get('/auth/google',
 
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login?error=domain' }),
-  (req, res) => req.session.save(() => res.redirect('/'))
+  (req, res) => res.redirect('/')
 );
 
 app.get('/auth/logout', (req, res) => {
