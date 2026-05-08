@@ -14,6 +14,7 @@ const apiRouter = require('./routes/api');
 const { ensureAuthenticated } = require('./middleware/auth');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: false } });
 
@@ -29,7 +30,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", 'unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com'],
         fontSrc: ["'self'", 'fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:', 'tile.openstreetmap.org', '*.tile.openstreetmap.org'],
-        connectSrc: ["'self'", 'ws:', 'wss:']
+        connectSrc: ["'self'", 'wss:']
       }
     }
   })
