@@ -202,11 +202,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// Cron: Reset reservations at midnight
-cron.schedule('0 0 * * *', () => {
+// Cron: Reset reservations at 11:00
+cron.schedule('0 11 * * *', () => {
   db.resetAllReservations();
   io.emit('reservationsReset');
-  console.log('Reservations reset at midnight');
+  console.log('Reservations reset at 11:00');
 }, { timezone: 'Europe/Sarajevo' });
 
 // Cron: Send push notification at 15:00

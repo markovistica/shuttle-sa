@@ -10,14 +10,17 @@ router.get('/tours', ensureAuthenticated, (req, res) => {
   const toursWithStatus = Object.values(TOURS).map(tour => {
     const tourReservations = db.getReservationsForTour(tour.id);
     const seats = {};
+    const seatNames = {};
     for (let i = 1; i <= TOTAL_SEATS; i++) {
       const res_user = tourReservations[i];
       if (!res_user) {
         seats[i] = 'free';
       } else if (res_user.userId === userId) {
         seats[i] = 'mine';
+        seatNames[i] = res_user.userName;
       } else {
         seats[i] = 'taken';
+        seatNames[i] = res_user.userName;
       }
     }
     const myReservation = Object.entries(tourReservations).find(
@@ -26,6 +29,7 @@ router.get('/tours', ensureAuthenticated, (req, res) => {
     return {
       ...tour,
       seats,
+      seatNames,
       myReservation: myReservation
         ? { seatNumber: parseInt(myReservation[0]), stop: myReservation[1].stop }
         : null,
@@ -81,6 +85,7 @@ router.post('/reserve', ensureAuthenticated, (req, res) => {
     tourId,
     seatNumber,
     status: 'taken',
+    userName,
     stop
   });
 

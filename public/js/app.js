@@ -46,11 +46,19 @@ const TOTAL_SEATS = 19;
 function initSocket() {
   socket = io();
 
-  socket.on('seatUpdate', ({ tourId, seatNumber, status }) => {
+  socket.on('seatUpdate', ({ tourId, seatNumber, status, userName }) => {
     const tour = tours.find(t => t.id === tourId);
     if (!tour) return;
-    if (status === 'free') delete tour.seats[seatNumber];
-    else tour.seats[seatNumber] = status;
+    if (status === 'free') {
+      delete tour.seats[seatNumber];
+      if (tour.seatNames) delete tour.seatNames[seatNumber];
+    } else {
+      tour.seats[seatNumber] = status;
+      if (userName) {
+        if (!tour.seatNames) tour.seatNames = {};
+        tour.seatNames[seatNumber] = userName;
+      }
+    }
     renderTourCard(tour);
     if (activeTour && activeTour.id === tourId) renderSeatGrid(tour);
   });
@@ -226,12 +234,22 @@ function renderSeatGrid(tour) {
   }
 }
 
+function getInitials(name) {
+  return (name || '').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+}
+
 function makeSeatEl(num, tour) {
   const status = tour.seats[num] || 'free';
   const div = document.createElement('div');
   div.className = `seat ${status}`;
-  div.textContent = num;
   div.dataset.seat = num;
+  if (status === 'taken' || status === 'mine') {
+    const initials = getInitials(tour.seatNames?.[num] || '');
+    div.classList.add('seat--named');
+    div.innerHTML = `<span class="seat-num">${num}</span><span class="seat-initials">${initials}</span>`;
+  } else {
+    div.textContent = num;
+  }
   if (status !== 'taken') {
     div.addEventListener('click', () => onSeatClick(num, status, tour));
   }
@@ -312,6 +330,8 @@ async function doReserve() {
       const tour = tours.find(t => t.id === activeTour.id);
       if (tour) {
         tour.seats[selectedSeat] = 'mine';
+        if (!tour.seatNames) tour.seatNames = {};
+        tour.seatNames[selectedSeat] = currentUser.displayName;
         tour.myReservation = { seatNumber: selectedSeat, stop };
         activeTour = tour;
         renderSeatGrid(tour);
@@ -340,6 +360,7 @@ async function doCancel() {
     const tour = tours.find(t => t.id === activeTour.id);
     if (tour) {
       delete tour.seats[seatNumber];
+      if (tour.seatNames) delete tour.seatNames[seatNumber];
       tour.myReservation = null;
       activeTour = tour;
       renderSeatGrid(tour);
