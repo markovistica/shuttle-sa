@@ -4,6 +4,8 @@ const { ensureAuthenticated, ensureDriver } = require('../middleware/auth');
 const { TOURS, TOTAL_SEATS } = require('./tours');
 const db = require('../db');
 
+const reservationLocks = new Set();
+
 // Get all tours with reservation status
 router.get('/tours', ensureAuthenticated, (req, res) => {
   const userId = req.user.id;
@@ -41,55 +43,60 @@ router.get('/tours', ensureAuthenticated, (req, res) => {
 
 // Reserve a seat
 router.post('/reserve', ensureAuthenticated, (req, res) => {
-  const { tourId, seatNumber, stop } = req.body;
+  const { tourId, stop } = req.body;
+  const seatNumber = parseInt(req.body.seatNumber, 10);
   const userId = req.user.id;
   const userName = req.user.displayName;
 
   if (!TOURS[tourId]) return res.status(400).json({ error: 'Invalid tour' });
   if (!stop || !TOURS[tourId].stops.includes(stop))
     return res.status(400).json({ error: 'Invalid stop' });
-  if (seatNumber < 1 || seatNumber > TOTAL_SEATS)
+  if (isNaN(seatNumber) || seatNumber < 1 || seatNumber > TOTAL_SEATS)
     return res.status(400).json({ error: 'Invalid seat number' });
 
-  const tourReservations = db.getReservationsForTour(tourId);
+  const lockKey = `${tourId}-${seatNumber}`;
+  if (reservationLocks.has(lockKey))
+    return res.status(409).json({ error: 'Sjedalo se upravo rezerviše, pokušaj ponovo' });
+  reservationLocks.add(lockKey);
 
-  // Check if user already has a reservation on this tour
-  const existing = Object.entries(tourReservations).find(([, r]) => r.userId === userId);
-  if (existing) {
-    return res.status(400).json({ error: 'Already reserved on this tour', seat: parseInt(existing[0]) });
-  }
+  try {
+    const tourReservations = db.getReservationsForTour(tourId);
 
-  // Check group limit: 1 morning tour + 1 afternoon tour per user
-  const morningTours = ['morning1', 'morning2'];
-  const afternoonTours = ['afternoon1', 'afternoon2'];
-  const group = morningTours.includes(tourId) ? morningTours : afternoonTours;
-  const sibling = group.find(id => id !== tourId);
-  if (sibling) {
-    const siblingReservations = db.getReservationsForTour(sibling);
-    const siblingExisting = Object.entries(siblingReservations).find(([, r]) => r.userId === userId);
-    if (siblingExisting) {
-      const label = morningTours.includes(tourId) ? 'jutarnjoj' : 'popodnevnoj';
-      return res.status(400).json({ error: `Već imaš rezervaciju u drugoj ${label} turi` });
+    const existing = Object.entries(tourReservations).find(([, r]) => r.userId === userId);
+    if (existing)
+      return res.status(400).json({ error: 'Already reserved on this tour', seat: parseInt(existing[0]) });
+
+    // Check group limit: 1 morning tour + 1 afternoon tour per user
+    const morningTours = ['morning1', 'morning2'];
+    const afternoonTours = ['afternoon1', 'afternoon2'];
+    const group = morningTours.includes(tourId) ? morningTours : afternoonTours;
+    const sibling = group.find(id => id !== tourId);
+    if (sibling) {
+      const siblingReservations = db.getReservationsForTour(sibling);
+      const siblingExisting = Object.entries(siblingReservations).find(([, r]) => r.userId === userId);
+      if (siblingExisting) {
+        const label = morningTours.includes(tourId) ? 'jutarnjoj' : 'popodnevnoj';
+        return res.status(400).json({ error: `Već imaš rezervaciju u drugoj ${label} turi` });
+      }
     }
+
+    if (tourReservations[seatNumber])
+      return res.status(400).json({ error: 'Seat already taken' });
+
+    db.reserve(tourId, seatNumber, { userId, userName, stop, reservedAt: new Date().toISOString() });
+
+    req.app.get('io').to(tourId).emit('seatUpdate', {
+      tourId,
+      seatNumber,
+      status: 'taken',
+      userName,
+      stop
+    });
+
+    res.json({ success: true, tourId, seatNumber, stop });
+  } finally {
+    reservationLocks.delete(lockKey);
   }
-
-  // Check if seat is taken
-  if (tourReservations[seatNumber]) {
-    return res.status(400).json({ error: 'Seat already taken' });
-  }
-
-  db.reserve(tourId, seatNumber, { userId, userName, stop, reservedAt: new Date().toISOString() });
-
-  // Emit real-time update
-  req.app.get('io').to(tourId).emit('seatUpdate', {
-    tourId,
-    seatNumber,
-    status: 'taken',
-    userName,
-    stop
-  });
-
-  res.json({ success: true, tourId, seatNumber, stop });
 });
 
 // Cancel a reservation
@@ -148,6 +155,14 @@ router.post('/push/subscribe', ensureAuthenticated, (req, res) => {
 // Get VAPID public key for push
 router.get('/push/vapid-key', (req, res) => {
   res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+// Manual reservation reset (driver only)
+router.post('/driver/reset', ensureDriver, (req, res) => {
+  db.resetAllReservations();
+  req.app.get('io').emit('reservationsReset');
+  console.log('Reservations manually reset by driver:', req.user.email);
+  res.json({ success: true });
 });
 
 module.exports = router;

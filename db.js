@@ -38,7 +38,6 @@ function cancelReservation(tourId, seatNumber) {
 function resetAllReservations() {
   const db = readDB();
   db.reservations = {};
-  db.messages = [];
   writeDB(db);
 }
 

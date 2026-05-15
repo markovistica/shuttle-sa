@@ -11,6 +11,7 @@ const cron = require('node-cron');
 const webpush = require('web-push');
 const path = require('path');
 const db = require('./db');
+const { TOURS } = require('./routes/tours');
 const apiRouter = require('./routes/api');
 const { ensureAuthenticated } = require('./middleware/auth');
 
@@ -46,7 +47,7 @@ const sessionStore = process.env.NODE_ENV === 'production'
   ? undefined
   : new FileStore({ path: './data/sessions', retries: 1, logFn: () => {} });
 
-app.use(session({
+const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET || 'change_me',
   resave: false,
   saveUninitialized: false,
@@ -57,7 +58,8 @@ app.use(session({
     sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
-}));
+});
+app.use(sessionMiddleware);
 
 // Passport
 app.use(passport.initialize());
@@ -152,8 +154,7 @@ app.get('/', ensureAuthenticated, (req, res) => {
 const driverLocations = {};
 
 io.use((socket, next) => {
-  // Allow socket connections; auth checked per-event
-  next();
+  sessionMiddleware(socket.request, {}, next);
 });
 
 io.on('connection', (socket) => {
@@ -192,6 +193,7 @@ io.on('connection', (socket) => {
 
   // Chat message — always global, no tour selection required
   socket.on('sendMessage', (data) => {
+    if (!socket.request.session?.passport?.user) return;
     const { text, userName } = data;
     if (!text || !userName) return;
     const msg = { text, userName, timestamp: new Date().toISOString() };
@@ -213,9 +215,14 @@ cron.schedule('0 11 * * *', () => {
 cron.schedule('0 15 * * *', async () => {
   if (!process.env.VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY.includes('your_')) return;
   const subscriptions = db.getAllPushSubscriptions();
+  const afternoonTimes = Object.values(TOURS)
+    .filter(t => t.direction === 'fromOffice')
+    .sort((a, b) => a.departureTime.localeCompare(b.departureTime))
+    .map(t => t.departureTime)
+    .join(' i ');
   const payload = JSON.stringify({
     title: 'Symphony Shuttle',
-    body: 'Popodnevne ture kreću uskoro! 16:20 i 17:30',
+    body: `Popodnevne ture kreću uskoro! ${afternoonTimes}`,
     icon: '/images/bus-icon.png'
   });
   for (const { subscription } of subscriptions) {

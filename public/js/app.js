@@ -489,6 +489,7 @@ function initDriverTourSelect() {
 
   document.getElementById('startLocBtn').addEventListener('click', startSharingLocation);
   document.getElementById('stopLocBtn').addEventListener('click', stopSharingLocation);
+  document.getElementById('driverResetBtn').addEventListener('click', doDriverReset);
 
   document.getElementById('driverSendBtn').addEventListener('click', sendDriverMessage);
   document.getElementById('driverMsgInput').addEventListener('keypress', e => {
@@ -502,6 +503,14 @@ function sendDriverMessage() {
   if (!text) return;
   socket.emit('sendMessage', { text, userName: currentUser.displayName });
   input.value = '';
+}
+
+async function doDriverReset() {
+  if (!confirm('Resetovati sve rezervacije?')) return;
+  const res = await fetch('/api/driver/reset', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) showToast('Sve rezervacije su resetovane');
+  else showToast('❌ Greška pri resetovanju', 'error');
 }
 
 async function loadPassengers(tourId) {
